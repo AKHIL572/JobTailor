@@ -20,7 +20,13 @@ def load_config() -> dict[str, Any]:
     if not p.exists():
         return {}
     try:
-        return json.loads(p.read_text(encoding="utf-8"))
+        config = json.loads(p.read_text(encoding="utf-8"))
+        if (
+            config.get("provider", "ollama") == "ollama"
+            and config.get("model") == "llama3.1:8b"
+        ):
+            config["model"] = "llama3:latest"
+        return config
     except Exception:
         return {}
 

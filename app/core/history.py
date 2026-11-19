@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS history (
 
 def _get_connection() -> sqlite3.Connection:
     db_path = data_path("history.db")
+    db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_path))
     conn.execute(DB_SCHEMA)
     conn.commit()
@@ -149,5 +150,57 @@ def delete_history_entry(entry_id: int) -> None:
     try:
         conn.execute("DELETE FROM history WHERE id = ?", (entry_id,))
         conn.commit()
+    finally:
+        conn.close()
+
+
+def get_history_stats() -> dict[str, Any]:
+    """Return aggregated statistics for the dashboard."""
+    conn = _get_connection()
+    try:
+        total_row = conn.execute("SELECT COUNT(*) FROM history").fetchone()
+        total_jobs = total_row[0] if total_row else 0
+
+        top_role_row = conn.execute(
+            """
+            SELECT job_title, COUNT(*) as cnt
+            FROM history
+            WHERE job_title IS NOT NULL AND TRIM(job_title) != ''
+            GROUP BY job_title
+            ORDER BY cnt DESC LIMIT 1
+            """
+        ).fetchone()
+        top_role = top_role_row[0] if top_role_row else "No jobs yet"
+        top_role_count = top_role_row[1] if top_role_row else 0
+
+        passed_row = conn.execute(
+            "SELECT COUNT(*) FROM history WHERE validation_passed = 1"
+        ).fetchone()
+        passed_count = passed_row[0] if passed_row else 0
+
+        latest_row = conn.execute(
+            "SELECT timestamp FROM history ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        latest_timestamp = latest_row[0] if latest_row else ""
+
+        role_rows = conn.execute(
+            """
+            SELECT job_title, COUNT(*) as cnt
+            FROM history
+            WHERE job_title IS NOT NULL AND TRIM(job_title) != ''
+            GROUP BY job_title
+            ORDER BY cnt DESC LIMIT 5
+            """
+        ).fetchall()
+        role_breakdown = [{"role": r[0], "count": r[1]} for r in role_rows]
+
+        return {
+            "total_jobs": total_jobs,
+            "top_role": top_role,
+            "top_role_count": top_role_count,
+            "passed_count": passed_count,
+            "latest_timestamp": latest_timestamp,
+            "role_breakdown": role_breakdown,
+        }
     finally:
         conn.close()

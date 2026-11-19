@@ -128,7 +128,7 @@ class LLMClient:
         self,
         provider: str = "ollama",
         base_url: str = "http://localhost:11434/v1",
-        model: str = "llama3.1:8b",
+        model: str = "llama3:latest",
         api_key: str = "",
         temperature: float = 0.3,
         timeout: float = 120.0,
@@ -163,7 +163,9 @@ class LLMClient:
         """Send a chat request and return the raw response text."""
         start = time.time()
         last_error = ""
+        attempts = 0
         for attempt in range(1, self.max_retries + 1):
+            attempts = attempt
             try:
                 resp = self._client.chat.completions.create(
                     model=self.model,
@@ -186,6 +188,15 @@ class LLMClient:
                 last_error = f"Invalid API key for provider '{self.provider}'"
                 break  # No point retrying auth failures
             except Exception as exc:
+                status_code = getattr(exc, "status_code", None)
+                if status_code == 404 and self.provider == "ollama":
+                    last_error = (
+                        f"Ollama could not find model '{self.model}'. "
+                        f"Install it with `ollama pull {self.model}` or choose an installed "
+                        "model in Settings."
+                    )
+                    logger.error("LLM [%s] model not found: %s", step, self.model)
+                    break
                 last_error = str(exc)
             logger.warning("LLM [%s] attempt %d failed: %s", step, attempt, last_error)
             if attempt < self.max_retries:
@@ -193,8 +204,9 @@ class LLMClient:
 
         duration = time.time() - start
         prompt_text = _messages_to_text(messages)
-        self._record(step, messages, "", duration, self.max_retries, False, last_error)
-        raise RuntimeError(f"LLM call '{step}' failed after {self.max_retries} attempts: {last_error}")
+        self._record(step, messages, "", duration, attempts, False, last_error)
+        attempt_label = "attempt" if attempts == 1 else "attempts"
+        raise RuntimeError(f"LLM call '{step}' failed after {attempts} {attempt_label}: {last_error}")
 
     def chat_json(
         self,
@@ -266,6 +278,12 @@ class LLMClient:
         except AuthenticationError:
             return False, "Authentication failed – check your API key."
         except Exception as exc:
+            if getattr(exc, "status_code", None) == 404 and self.provider == "ollama":
+                return False, (
+                    f"Ollama could not find model '{self.model}'. "
+                    f"Install it with `ollama pull {self.model}` or choose an installed "
+                    "model in Settings."
+                )
             return False, f"Error: {exc}"
 
     # ------------------------------------------------------------------

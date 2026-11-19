@@ -51,11 +51,20 @@ class TemplatePage(QWidget):
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(16)
 
-        header = QLabel("LaTeX Resume Template")
+        # ── Top Navigation Row ────────────────────────────────────────
+        top_nav_row = QHBoxLayout()
+        back_btn = QPushButton("←  Back to Dashboard")
+        back_btn.setObjectName("back_btn")
+        back_btn.clicked.connect(self._go_back_to_dashboard)
+        top_nav_row.addWidget(back_btn)
+        top_nav_row.addStretch()
+        layout.addLayout(top_nav_row)
+
+        header = QLabel("📄 LaTeX Resume Template")
         header.setObjectName("header")
         sub = QLabel(
-            "Edit your LaTeX template. Use placeholders like %%SUMMARY%%, %%SKILLS%%, etc. "
-            "The app fills these in; everything else stays exactly as written."
+            "Customize the LaTeX template. Placeholders like %%SUMMARY%%, %%SKILLS%%, and %%PROJECTS%% "
+            "are populated automatically during tailoring while preserving your layout and typography."
         )
         sub.setObjectName("subheader")
         sub.setWordWrap(True)
@@ -134,6 +143,14 @@ class TemplatePage(QWidget):
         self.wizard_btn.clicked.connect(self._wizard)
         self.compile_btn.clicked.connect(self._test_compile)
         self.editor.textChanged.connect(self._update_detected)
+
+    def _go_back_to_dashboard(self) -> None:
+        p = self.parent()
+        while p:
+            if hasattr(p, "navigate_to"):
+                p.navigate_to("dashboard")
+                return
+            p = p.parent()
 
     def _load(self) -> None:
         path = data_path("templates", "resume_template.tex")

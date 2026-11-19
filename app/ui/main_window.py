@@ -1,5 +1,5 @@
 """
-Main application window with left sidebar navigation.
+Main application window with top navigation bar and dashboard.
 """
 
 from __future__ import annotations
@@ -14,12 +14,7 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon, QFont
 from PySide6.QtWidgets import (
     QApplication,
-    QHBoxLayout,
-    QLabel,
-    QListWidget,
-    QListWidgetItem,
     QMainWindow,
-    QSplitter,
     QStackedWidget,
     QStatusBar,
     QVBoxLayout,
@@ -27,6 +22,9 @@ from PySide6.QtWidgets import (
 )
 
 from app.core.data_dirs import data_path, get_data_root
+from app.core.profile_loader import get_profile_summary
+from app.ui.widgets.top_bar import TopBarWidget
+from app.ui.pages.dashboard_page import DashboardPage
 from app.ui.pages.new_job_page import NewJobPage
 from app.ui.pages.history_page import HistoryPage
 from app.ui.pages.profile_page import ProfilePage
@@ -35,20 +33,12 @@ from app.ui.pages.rules_page import RulesPage
 from app.ui.pages.settings_page import SettingsPage
 
 
-NAV_ITEMS = [
-    ("✦  New Job", "new_job"),
-    ("⏱  History", "history"),
-    ("👤  Master Profile", "profile"),
-    ("📄  Template", "template"),
-    ("⚙  Rules", "rules"),
-    ("🔧  Settings", "settings"),
-]
-
-
 class MainWindow(QMainWindow):
     """
     The application's main window.
-    Left sidebar for navigation; right area shows the active page.
+    Features a modern top navigation bar with quick view switchers, candidate profile chip,
+    and a 3-dots/lines options menu in the top right.
+    Opens to the Dashboard & Profile overview by default.
     """
 
     def __init__(self, config: dict[str, Any]):
@@ -61,71 +51,49 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _setup_window(self) -> None:
-        self.setWindowTitle("JobTailor")
-        self.setMinimumSize(1200, 780)
-        self.resize(1400, 900)
+        self.setWindowTitle("JobTailor — AI Resume & Career Suite")
+        self.setWindowFlags(
+            Qt.WindowType.Window
+            | Qt.WindowType.WindowSystemMenuHint
+            | Qt.WindowType.WindowMinimizeButtonHint
+            | Qt.WindowType.WindowMaximizeButtonHint
+            | Qt.WindowType.WindowCloseButtonHint
+        )
 
-        # Center on screen
         screen = QApplication.primaryScreen()
         if screen:
             geo = screen.availableGeometry()
+            min_width = min(1100, geo.width())
+            min_height = min(680, geo.height())
+            self.setMinimumSize(min_width, min_height)
+            self.resize(min(1440, geo.width()), min(920, geo.height()))
             self.move(
-                (geo.width() - self.width()) // 2,
-                (geo.height() - self.height()) // 2,
+                geo.x() + (geo.width() - self.width()) // 2,
+                geo.y() + (geo.height() - self.height()) // 2,
             )
+        else:
+            self.setMinimumSize(1000, 680)
+            self.resize(1400, 900)
 
     def _build_ui(self) -> None:
         central = QWidget()
+        central.setObjectName("central_widget")
         self.setCentralWidget(central)
-        root_layout = QHBoxLayout(central)
+        root_layout = QVBoxLayout(central)
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
-        # ── Sidebar ────────────────────────────────────────────────────
-        sidebar_container = QWidget()
-        sidebar_container.setFixedWidth(200)
-        sidebar_layout = QVBoxLayout(sidebar_container)
-        sidebar_layout.setContentsMargins(0, 0, 0, 0)
-        sidebar_layout.setSpacing(0)
+        # ── Sleek Top Navigation Bar ─────────────────────────────────────────
+        profile_summary = get_profile_summary()
+        user_name = profile_summary.get("name", "AKHIL T V")
+        self.top_bar = TopBarWidget(user_name=user_name, parent=self)
+        root_layout.addWidget(self.top_bar)
 
-        # App logo / title
-        logo_widget = QWidget()
-        logo_widget.setFixedHeight(70)
-        logo_layout = QVBoxLayout(logo_widget)
-        logo_layout.setContentsMargins(20, 16, 20, 8)
-        title_label = QLabel("JobTailor")
-        title_label.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
-        title_label.setStyleSheet("color: #5b6af0; font-size: 18px; font-weight: 700;")
-        subtitle_label = QLabel("AI Resume & Email")
-        subtitle_label.setStyleSheet("color: #555870; font-size: 10px;")
-        logo_layout.addWidget(title_label)
-        logo_layout.addWidget(subtitle_label)
-
-        self.sidebar = QListWidget()
-        self.sidebar.setObjectName("sidebar")
-        self.sidebar.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.sidebar.setSpacing(2)
-
-        for label, _ in NAV_ITEMS:
-            item = QListWidgetItem(label)
-            item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-            self.sidebar.addItem(item)
-
-        sidebar_layout.addWidget(logo_widget)
-        sidebar_layout.addWidget(self.sidebar)
-        sidebar_layout.addStretch()
-
-        # Data folder shortcut at bottom
-        data_label = QLabel(f"Data: {str(get_data_root())[:25]}…")
-        data_label.setStyleSheet("color: #404358; font-size: 9px; padding: 8px 16px;")
-        data_label.setWordWrap(True)
-        sidebar_layout.addWidget(data_label)
-
-        # ── Page stack ─────────────────────────────────────────────────
+        # ── Stacked Pages Container ──────────────────────────────────────────
         self.page_stack = QStackedWidget()
+        self.page_stack.setObjectName("page_stack")
 
-        self.pages: dict[str, QWidget] = {}
-
+        self.dashboard_page = DashboardPage(main_window=self)
         self.new_job_page = NewJobPage(self)
         self.history_page = HistoryPage(self)
         self.profile_page = ProfilePage(self)
@@ -133,43 +101,49 @@ class MainWindow(QMainWindow):
         self.rules_page = RulesPage(self)
         self.settings_page = SettingsPage(self)
 
-        for page in [
-            self.new_job_page,
-            self.history_page,
-            self.profile_page,
-            self.template_page,
-            self.rules_page,
-            self.settings_page,
-        ]:
+        self.pages: dict[str, QWidget] = {
+            "dashboard": self.dashboard_page,
+            "new_job": self.new_job_page,
+            "history": self.history_page,
+            "profile": self.profile_page,
+            "template": self.template_page,
+            "rules": self.rules_page,
+            "settings": self.settings_page,
+        }
+
+        for page in self.pages.values():
             self.page_stack.addWidget(page)
 
-        root_layout.addWidget(sidebar_container)
         root_layout.addWidget(self.page_stack)
 
-        # ── Status bar ─────────────────────────────────────────────────
+        # ── Status Bar ───────────────────────────────────────────────────────
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage("Ready")
+        self.status_bar.showMessage("Ready · Welcome to JobTailor")
 
-        # Select first item
-        self.sidebar.setCurrentRow(0)
+        # Open Dashboard on launch
+        self.navigate_to("dashboard")
 
     def _connect_signals(self) -> None:
-        self.sidebar.currentRowChanged.connect(self._navigate)
+        self.top_bar.navigate_requested.connect(self.navigate_to)
+        self.dashboard_page.navigate_requested.connect(self.navigate_to)
         self.new_job_page.status_update.connect(self.status_bar.showMessage)
 
-    def _navigate(self, index: int) -> None:
-        """Switch to the selected page."""
-        self.page_stack.setCurrentIndex(index)
-
     def navigate_to(self, page_name: str) -> None:
-        """Navigate programmatically by page key."""
-        for i, (_, key) in enumerate(NAV_ITEMS):
-            if key == page_name:
-                self.sidebar.setCurrentRow(i)
-                break
+        """Switch to the specified page and refresh its data if appropriate."""
+        widget = self.pages.get(page_name)
+        if widget:
+            self.page_stack.setCurrentWidget(widget)
+            self.top_bar.set_active_page(page_name)
+            if page_name == "dashboard":
+                self.dashboard_page.refresh()
+            elif page_name == "history":
+                self.history_page._load_history()
+            elif page_name == "profile":
+                self.profile_page._load()
 
     def reload_config(self) -> None:
         """Reload config after settings change."""
         from app.core.config import load_config
         self.config = load_config()
+        self.dashboard_page.refresh()

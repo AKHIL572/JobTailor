@@ -40,9 +40,21 @@ class HistoryPage(QWidget):
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(16)
 
-        header = QLabel("History")
+        # ── Top Navigation Row ────────────────────────────────────────
+        top_nav_row = QHBoxLayout()
+        back_btn = QPushButton("←  Back to Dashboard")
+        back_btn.setObjectName("back_btn")
+        back_btn.clicked.connect(self._go_back_to_dashboard)
+        top_nav_row.addWidget(back_btn)
+        top_nav_row.addStretch()
+        layout.addLayout(top_nav_row)
+
+        header = QLabel("⏱ Application History & Archive")
         header.setObjectName("header")
+        sub = QLabel("Browse, search, and review all your previously tailored resumes, cover emails, and PDF files.")
+        sub.setObjectName("subheader")
         layout.addWidget(header)
+        layout.addWidget(sub)
 
         # Search bar
         search_row = QHBoxLayout()
@@ -168,6 +180,14 @@ class HistoryPage(QWidget):
         pdf = full.get("pdf_path", "")
         if pdf and Path(pdf).exists():
             QDesktopServices.openUrl(QUrl.fromLocalFile(pdf))
+
+    def _go_back_to_dashboard(self) -> None:
+        p = self.parent()
+        while p:
+            if hasattr(p, "navigate_to"):
+                p.navigate_to("dashboard")
+                return
+            p = p.parent()
 
     def _delete_entry(self) -> None:
         entry = self._current_entry()

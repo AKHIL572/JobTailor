@@ -75,7 +75,7 @@ class Pipeline:
         self.client = LLMClient(
             provider=provider,
             base_url=self.config.get("base_url", "http://localhost:11434/v1"),
-            model=self.config.get("model", "llama3.1:8b"),
+            model=self.config.get("model", "llama3:latest"),
             api_key=api_key,
             temperature=float(self.config.get("temperature", 0.3)),
             max_retries=int(self.config.get("max_retries", 3)),

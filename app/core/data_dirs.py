@@ -90,7 +90,7 @@ def _seed_defaults() -> None:
         default_settings = {
             "provider": "ollama",
             "base_url": "http://localhost:11434/v1",
-            "model": "llama3.1:8b",
+            "model": "llama3:latest",
             "temperature": 0.3,
             "theme": "dark",
             "tectonic_path": tectonic_default,

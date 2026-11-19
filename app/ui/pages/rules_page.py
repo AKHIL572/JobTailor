@@ -38,12 +38,20 @@ class RulesPage(QWidget):
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(16)
 
-        header = QLabel("Rule Files")
+        # ── Top Navigation Row ────────────────────────────────────────
+        top_nav_row = QHBoxLayout()
+        back_btn = QPushButton("←  Back to Dashboard")
+        back_btn.setObjectName("back_btn")
+        back_btn.clicked.connect(self._go_back_to_dashboard)
+        top_nav_row.addWidget(back_btn)
+        top_nav_row.addStretch()
+        layout.addLayout(top_nav_row)
+
+        header = QLabel("⚙ Tailoring Rules & Prompts")
         header.setObjectName("header")
         sub = QLabel(
-            "These files contain the instructions injected into every LLM call. "
-            "Edit them to change how JobTailor analyzes, rates, and writes content. "
-            "Paste your own rules below the placeholder header line."
+            "Instructions injected into AI calls. Customize ATS keywords, fit grading criteria, "
+            "and genuineness rules that guide how JobTailor analyzes roles and writes bullet points."
         )
         sub.setObjectName("subheader")
         sub.setWordWrap(True)
@@ -86,6 +94,14 @@ class RulesPage(QWidget):
 
         self.save_btn.clicked.connect(self._save_rule)
         self.reset_btn.clicked.connect(self._reset_rule)
+
+    def _go_back_to_dashboard(self) -> None:
+        p = self.parent()
+        while p:
+            if hasattr(p, "navigate_to"):
+                p.navigate_to("dashboard")
+                return
+            p = p.parent()
 
     def _load_list(self) -> None:
         self.rule_list.clear()

@@ -1,112 +1,183 @@
-# JobTailor
+# JobTailor — AI Resume & Career Application Suite
 
-**JobTailor** is a desktop application built with Python 3.11+ and PySide6 that analyzes job descriptions, determines an evidence-based application verdict, extracts contacts, creates tailored outreach emails, and generates single-page ATS-optimized LaTeX resumes compiled to PDF.
+<p align="center">
+  <img src="assets/icon.png" alt="JobTailor Logo" width="100"/>
+</p>
 
----
-
-## Quick Start (How to Run)
-
-### 1. Prerequisites
-- **Python 3.11+** installed on your system.
-- **LLM Access** (one of the following):
-  - **Local Ollama** (recommended for full privacy): [Download Ollama](https://ollama.com/) and run:
-    ```bash
-    ollama run llama3.1:8b
-    # or for higher reasoning: ollama run llama3.3:70b
-    ```
-  - **Cloud APIs**: Groq, Together AI, or OpenRouter (enter your API key in Settings).
-- **LaTeX Compiler** (for compiling PDF resumes):
-  - **Tectonic** (recommended lightweight single-binary engine):
-    ```powershell
-    winget install tectonic
-    ```
-  - *Or* **MiKTeX** / **TeX Live** (pdflatex on your PATH).
+<p align="center">
+  <b>An end-to-end AI-powered desktop application built with Python and PySide6 that analyzes job descriptions, flags scam risks, evaluates candidate fit, drafts targeted outreach emails, and compiles pixel-perfect, single-page, ATS-optimized LaTeX resumes.</b>
+</p>
 
 ---
 
-### 2. Environment Setup & Installation
+## Overview
 
-Open PowerShell in the project directory:
+**JobTailor** is a local-first career automation suite designed for candidates targeting competitive software engineering, data science, QA, and analyst roles. It eliminates the guesswork and tedious manual formatting of applying to jobs by combining deep LLM analysis with automated LaTeX typesetting and strict layout validation.
 
-```powershell
-cd "C:\Users\venut\OneDrive\Desktop\Resume Tailor"
+Whether you run open-source models completely offline via **Ollama** or high-throughput cloud models via **Groq**, **OpenRouter**, or **Together AI**, JobTailor keeps your data private, safe, and stored locally on your machine.
 
-# 1. Create a virtual environment
-python -m venv venv
+---
 
-# 2. Activate virtual environment
-# Windows PowerShell:
-.\venv\Scripts\Activate.ps1
-# (If script execution is disabled in PowerShell, run: Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass)
+## Key Features
 
-# 3. Install dependencies
-pip install -r requirements.txt
+### 1. Modern Desktop Experience
+- **Interactive Dashboard**: Quick view of candidate profile summary, application statistics (total processed, apply vs. skip verdicts), quick action launchpads, and recent application history.
+- **Top Navigation Bar**: Streamlined navigation with candidate profile chip, quick view switchers, and settings drawer.
+- **Adaptive Dark & Light Themes**: Fully styled with custom Qt stylesheets, modern typography, crisp cards, and color-coded status badges.
+
+### 2. Autonomous 7-Phase Application Pipeline
+When you paste a job description into **New Job**, JobTailor runs a sequential multi-stage pipeline:
+1. **Job Analysis**: Extracts target role, company name, compensation, tech stack, and separates requirements into *Must-Have* vs *Preferred*.
+2. **Genuineness Check**: Evaluates job credibility, scanning for red flags such as unrealistic compensation, WhatsApp/Telegram-only interviews, free public email domains (`@gmail.com`), or upfront payment requests.
+3. **Evidence-Based Verdict**: Scores role alignment against your catalog of master projects. If the role is flagged `DON'T APPLY` or `STRONGLY DON'T APPLY`, the pipeline safely terminates early to save time and compute.
+4. **Outreach & Cold Email**: Detects hiring contact emails and application portals, drafting a concise, persuasive cold outreach email tailored to the recruiter or hiring manager.
+5. **Resume Tailoring**: Selects and highlights 2–3 relevant projects, customizes 4–5 categorized skill groups, frames 4 targeted experience bullets, and writes an impactful professional summary.
+6. **LaTeX Compilation & Page Fit Validation**: Compiles the LaTeX template via **Tectonic** (or pdflatex) and rigorously checks for single-page constraint, strict single-line bullets, and 85–100% horizontal line fill.
+7. **Automated LLM Fixer Loop**: If any bullet wraps onto a second line or exceeds visual space thresholds, the fixer loop calculates the exact overflow character delta and re-prompts the LLM to tighten wording while preserving metrics.
+
+### 3. Comprehensive Application History
+- Stored locally in a dedicated SQLite database (`history.db`).
+- Search, filter by verdict (`APPLY`, `CAUTION`, `SKIP`), and inspect previous applications.
+- One-click export for generated `.pdf`, `.tex`, and full analysis `.json` records.
+
+### 4. Customizable Profile, Rules & Templates
+- **Master Profile Tab**: Edit your candidate profile in markdown with real-time parse checks.
+- **Rules Tab**: Fine-tune any of the 7 system prompts independently with per-rule "Reset to Default" backups.
+- **Template Tab**: Live-edit the LaTeX resume template and inspect placeholder tags.
+
+### 5. Enterprise-Grade Security
+- API keys (Groq, Together AI, OpenRouter) are never stored in plaintext config files—they are encrypted using your operating system's native credential store via the `keyring` library.
+
+---
+
+## Project Architecture
+
+```
+Resume Tailor/
+├── app/
+│   ├── main.py                  # Application entry point & Qt initialization
+│   ├── core/
+│   │   ├── apply_finder.py      # Contact & application link extraction
+│   │   ├── config.py            # Settings persistence & model defaults
+│   │   ├── data_dirs.py         # LocalAppData directory management & seeding
+│   │   ├── email_writer.py      # Tailored recruiter outreach generator
+│   │   ├── fixer.py             # Line-overflow fixer loop
+│   │   ├── genuineness.py       # Job scam & authenticity checker
+│   │   ├── history.py           # SQLite history storage & analytics
+│   │   ├── job_analyzer.py      # JD parsing and requirement segmentation
+│   │   ├── latex_utils.py       # LaTeX escaping, template filling, Tectonic compilation
+│   │   ├── llm_client.py        # Unified OpenAI-compatible LLM client (Ollama/Groq/etc.)
+│   │   ├── logging_setup.py     # File & console logging setup
+│   │   ├── pipeline.py          # Orchestrates the 7-step pipeline & Qt signals
+│   │   ├── profile_loader.py    # Markdown profile parser & validator
+│   │   ├── resume_builder.py    # Resume section generation
+│   │   ├── rules_loader.py      # System prompts loader
+│   │   ├── validator.py         # PDF page count, bullet wrap, and line fill validator
+│   │   └── verdict.py           # Match evaluation & apply/skip decision logic
+│   ├── models/
+│   │   └── schemas.py           # Pydantic models for structured outputs
+│   └── ui/
+│       ├── main_window.py       # Main application window & top navigation
+│       ├── theme.py             # Custom Dark & Light Qt style definitions
+│       ├── pages/               # Individual view controllers (Dashboard, New Job, History, Profile, etc.)
+│       └── widgets/             # Reusable UI components (TopBar, PDFViewer)
+├── assets/                      # Application icons & visual assets
+├── bin/                         # Bundled Tectonic binary for Windows
+├── build/                       # PyInstaller packaging configuration
+├── prompts/                     # Default modular prompt instructions (01 through 07)
+├── templates/                   # Default LaTeX resume template
+├── tests/                       # Comprehensive pytest suite
+├── requirements.txt             # Python dependencies
+└── README.md                    # Project documentation
 ```
 
 ---
 
-### 3. Launch the Application
+## Quick Start
 
+### 1. Prerequisites
+- **Python 3.11+** installed on your system.
+- **LaTeX Compiler**:
+  - The bundled lightweight `bin/tectonic.exe` is used automatically on Windows.
+  - Alternatively, install system-wide [Tectonic](https://tectonic-typesetting.github.io/) (`winget install tectonic`) or [MiKTeX](https://miktex.org/).
+- **LLM Provider**:
+  - **Local Ollama** (recommended for full privacy): [Download Ollama](https://ollama.com/) and run:
+    ```bash
+    ollama run llama3:latest
+    # or for larger parameter models:
+    ollama run llama3.3:70b
+    ```
+  - **Cloud APIs**: Groq, OpenRouter, or Together AI (configure in Settings).
+
+---
+
+### 2. Installation & Setup
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/AKHIL572/Resume_Tailor.git
+   cd Resume_Tailor
+   ```
+
+2. **Create and activate a virtual environment**:
+   ```powershell
+   # Windows PowerShell
+   python -m venv venv
+   .\venv\Scripts\Activate.ps1
+   ```
+   *(If script execution is disabled in PowerShell, run: `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`)*
+
+3. **Install dependencies**:
+   ```powershell
+   pip install -r requirements.txt
+   ```
+
+---
+
+### 3. Launching the App
+
+Start the application with:
 ```powershell
 python -m app.main
 ```
 
----
-
-## First-Run Guide & Workflow
-
-On initial launch, JobTailor automatically initializes your user data directory under:
-`%LOCALAPPDATA%\JobTailor\JobTailor`
-and seeds your:
-- **Master Profile** (`profile/master_profile.md`)
-- **LaTeX Template** (`templates/resume_template.tex`)
-- **Editable Rule Prompts** (`rules/01_source_of_truth.md` through `rules/07_final_review.md`)
-- **Contact Details** (`profile/contact.json`)
-- **Layout & Application Config** (`config/settings.json`, `config/layout_config.json`)
-
-### Workflow:
-1. **Settings Tab**:
-   - Verify provider: `ollama` (default endpoint `http://localhost:11434/v1`) or choose `groq` / `openrouter` / `together`.
-   - Click **"Test Connection"** to verify communication with the LLM.
-   - Verify that Tectonic or pdflatex is detected.
-2. **New Job Tab**:
-   - Paste any Job Description (JD) into the large text area.
-   - Click **"Analyze & Tailor"**.
-   - Watch the live progress steps:
-     1. `Analyzing JD` $\rightarrow$ Extracts roles, salary, tech stack, and separates requirements (Must-have vs Preferred).
-     2. `Genuineness Check` $\rightarrow$ Flags risk indicators (unrealistic pay, WhatsApp-only, free mail domains).
-     3. `Fit & Verdict` $\rightarrow$ Calculates fit against your 15 cataloged projects. (If `DON'T APPLY` or `STRONGLY DON'T APPLY`, execution safely halts here).
-     4. `How to Apply & Email` $\rightarrow$ Extracts contact email and generates a concise outreach email.
-     5. `Resume Generation` $\rightarrow$ Tailors summary, skills (4-5 categories), experience (4 bullets), and 2-3 prioritized projects from your pool of 13 eligible projects (Project 1 excluded, Project 6 reserved for internship experience).
-     6. `Compile & Validate` $\rightarrow$ Compiles via Tectonic and validates single-page fit, single-line bullets, and 85-100% line fill.
-     7. `Fixer Loop` $\rightarrow$ If line wrapping or metric issues occur, the LLM refines the text until it passes.
-   - Switch between result tabs: **Verdict**, **Job Details**, **Genuineness**, **How to Apply**, **Email**, **Resume (PDF Viewer)**, **LaTeX**, and **Log**.
-3. **History Tab**:
-   - Search through previous applications, view past verdicts, and export generated `.tex`, `.pdf`, and analysis files.
-4. **Master Profile Tab**:
-   - View/edit your profile. Click **"Parse Check"** anytime to verify project exclusions and leadership count.
-5. **Rules Tab**:
-   - Edit any of the 7 rules independently in markdown with per-file **"Reset to Default"**.
+On initial launch, JobTailor automatically seeds your local profile, templates, and rules into:
+`%LOCALAPPDATA%\JobTailor\JobTailor\`
 
 ---
 
-## Building a Standalone Executable
+## Running the Test Suite
 
-To produce a single, self-contained Windows executable with app icon:
+Run the full automated test suite with:
+```powershell
+python -m pytest
+```
+
+Tests cover:
+- LLM response parsing and schema validation
+- LaTeX special character escaping and placeholder substitution
+- Candidate profile parsing and project count constraints
+- Line-fill calculations, bullet point length, and single-page constraints
+- Settings migration and client retry logic
+
+---
+
+## Building a Standalone Windows Executable
+
+To compile JobTailor into a standalone Windows `.exe` with the bundled icon:
 
 ```powershell
 pip install pyinstaller
 pyinstaller build/pyinstaller.spec
 ```
 
-The resulting binary will be created in `dist/JobTailor.exe`.
-You can right-click `dist/JobTailor.exe` $\rightarrow$ **Send to** $\rightarrow$ **Desktop (create shortcut)**.
+The compiled binary will be placed in `dist/JobTailor.exe`.
 
 ---
 
-## Layout Configuration & `combo_overrides`
+## Configuration & Layout Tuning
 
-Layout parameters live in `%LOCALAPPDATA%\JobTailor\JobTailor\config\layout_config.json`:
+Layout behavior is managed via `%LOCALAPPDATA%\JobTailor\JobTailor\config\layout_config.json`:
 
 ```json
 {
@@ -126,31 +197,12 @@ Layout parameters live in `%LOCALAPPDATA%\JobTailor\JobTailor\config\layout_conf
   "line_fill_min": 0.85,
   "line_fill_max": 1.00,
   "max_fix_rounds": 5,
-  "unused_space_threshold_mm": 15.0,
-  "combo_overrides": [
-    {
-      "condition": "include_leadership_and_two_projects",
-      "projects_count": 2,
-      "bullets_per_project": 3,
-      "skills_categories": 4
-    }
-  ]
+  "unused_space_threshold_mm": 15.0
 }
 ```
 
 ---
 
-## Troubleshooting
+## License
 
-- **Ollama not running**: Ensure the Ollama service is active. Run `ollama list` in terminal.
-- **LaTeX compilation fails**: Ensure `tectonic` is installed and reachable via PATH, or specify its exact path in the **Settings** page.
-- **Bullet line wrapping**: The app's automated `fixer.py` sends the exact overflow character delta back to the LLM to shorten the bullet while retaining facts.
-- **Model too small**: Models under 7B parameters may occasionally struggle with JSON formatting. Use `llama3.1:8b` or cloud providers (Groq/OpenRouter with `llama-3.3-70b-versatile`).
-
----
-
-## Assumptions & Design Defaults
-1. **Project 1 Exclusion**: `Project 1` (House Price Analysis) is always excluded from the projects section across all prompts.
-2. **Internship Assignment**: `Project 6` (Credit Risk Prediction) is exclusively assigned to the Experience section as your internship project.
-3. **Dynamic Portfolio Linking**: For QA or developer roles, the header portfolio link defaults to your QA portfolio (`akhil-tv-qa-portfolio.vercel.app`); for data/analytical roles, it defaults to your primary portfolio (`akhil-tv-portfolio.vercel.app`).
-4. **Local Secrets**: Cloud API keys are securely stored in Windows Credential Locker using the `keyring` library, never in plaintext.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

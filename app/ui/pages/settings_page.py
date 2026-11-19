@@ -50,7 +50,7 @@ class ConnectionTester(QObject):
         client = LLMClient(
             provider=self._config.get("provider", "ollama"),
             base_url=self._config.get("base_url", "http://localhost:11434/v1"),
-            model=self._config.get("model", "llama3.1:8b"),
+            model=self._config.get("model", "llama3:latest"),
             api_key=self._api_key,
             temperature=0.0,
         )
@@ -79,9 +79,22 @@ class SettingsPage(QWidget):
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(20)
 
-        header = QLabel("Settings")
+        header = QLabel("🔧 System Settings")
         header.setObjectName("header")
+        sub = QLabel("Configure AI models, API credentials, local Ollama endpoints, and LaTeX compilation engines.")
+        sub.setObjectName("subheader")
+
+        # ── Top Navigation Row ────────────────────────────────────────
+        top_nav_row = QHBoxLayout()
+        back_btn = QPushButton("←  Back to Dashboard")
+        back_btn.setObjectName("back_btn")
+        back_btn.clicked.connect(self._go_back_to_dashboard)
+        top_nav_row.addWidget(back_btn)
+        top_nav_row.addStretch()
+        layout.addLayout(top_nav_row)
+
         layout.addWidget(header)
+        layout.addWidget(sub)
 
         # ── Privacy note ───────────────────────────────────────────────
         privacy = QLabel(
@@ -108,8 +121,15 @@ class SettingsPage(QWidget):
         llm_form.addRow("Base URL:", self.base_url_edit)
 
         self.model_edit = QLineEdit()
-        self.model_edit.setPlaceholderText("llama3.1:8b")
+        self.model_edit.setPlaceholderText("llama3:latest")
         llm_form.addRow("Model:", self.model_edit)
+        model_hint = QLabel(
+            "For Ollama, the model must be installed locally. Run "
+            "`ollama pull <model>` or enter a model shown by `ollama list`."
+        )
+        model_hint.setWordWrap(True)
+        model_hint.setStyleSheet("color: #8b90a0; font-size: 11px;")
+        llm_form.addRow("", model_hint)
 
         self.api_key_edit = QLineEdit()
         self.api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
@@ -229,7 +249,7 @@ class SettingsPage(QWidget):
 
         # Provider presets
         self._provider_presets = {
-            "ollama": ("http://localhost:11434/v1", "llama3.1:8b"),
+            "ollama": ("http://localhost:11434/v1", "llama3:latest"),
             "groq": ("https://api.groq.com/openai/v1", "llama3-8b-8192"),
             "together": ("https://api.together.xyz/v1", "meta-llama/Llama-3.1-8B-Instruct-Turbo"),
             "openrouter": ("https://openrouter.ai/api/v1", "meta-llama/llama-3.1-8b-instruct"),
@@ -243,7 +263,7 @@ class SettingsPage(QWidget):
         if idx >= 0:
             self.provider_combo.setCurrentIndex(idx)
         self.base_url_edit.setText(cfg.get("base_url", "http://localhost:11434/v1"))
-        self.model_edit.setText(cfg.get("model", "llama3.1:8b"))
+        self.model_edit.setText(cfg.get("model", "llama3:latest"))
         self.temp_spin.setValue(float(cfg.get("temperature", 0.3)))
         self.retry_spin.setValue(int(cfg.get("max_retries", 3)))
         self.tectonic_edit.setText(cfg.get("tectonic_path", "tectonic"))
@@ -430,3 +450,11 @@ class SettingsPage(QWidget):
             QMessageBox.information(self, "Imported", "Settings imported.")
         except Exception as exc:
             QMessageBox.critical(self, "Error", f"Failed to import settings: {exc}")
+
+    def _go_back_to_dashboard(self) -> None:
+        p = self.parent()
+        while p:
+            if hasattr(p, "navigate_to"):
+                p.navigate_to("dashboard")
+                return
+            p = p.parent()

@@ -10,7 +10,6 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 
 from app.core.data_dirs import ensure_data_dirs, data_path
@@ -21,9 +20,6 @@ from app.core.logging_setup import setup_logging
 
 def main() -> None:
     """Application entry point."""
-    # High-DPI support
-    QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
-
     app = QApplication(sys.argv)
     app.setApplicationName("JobTailor")
     app.setOrganizationName("JobTailor")

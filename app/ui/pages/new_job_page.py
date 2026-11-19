@@ -101,10 +101,19 @@ class NewJobPage(QWidget):
         main_layout.setContentsMargins(24, 24, 24, 24)
         main_layout.setSpacing(16)
 
+        # ── Top Navigation Row ────────────────────────────────────────
+        top_nav_row = QHBoxLayout()
+        back_btn = QPushButton("←  Back to Dashboard")
+        back_btn.setObjectName("back_btn")
+        back_btn.clicked.connect(self._go_back_to_dashboard)
+        top_nav_row.addWidget(back_btn)
+        top_nav_row.addStretch()
+        main_layout.addLayout(top_nav_row)
+
         # ── Header ────────────────────────────────────────────────────
-        header = QLabel("New Job Analysis")
+        header = QLabel("✦ New Job Analysis & Resume Tailoring")
         header.setObjectName("header")
-        sub = QLabel("Paste a job description below, then click Analyze & Tailor.")
+        sub = QLabel("Paste any job description below. JobTailor analyzes requirements, matches your genuine experience, and compiles a tailored 1-page resume & outreach email.")
         sub.setObjectName("subheader")
         main_layout.addWidget(header)
         main_layout.addWidget(sub)
@@ -259,14 +268,55 @@ class NewJobPage(QWidget):
         self.step_label.setText(f"⟳  {msg}")
         self.status_update.emit(msg)
 
+    def _go_back_to_dashboard(self) -> None:
+        p = self.parent()
+        while p:
+            if hasattr(p, "navigate_to"):
+                p.navigate_to("dashboard")
+                return
+            p = p.parent()
+
     def _on_finished(self, result: PipelineResult) -> None:
         self._result = result
         self._populate_results(result)
         self.results_widget.setVisible(True)
         self.status_update.emit("Analysis complete ✓")
 
+        # Refresh dashboard stats and recent applications
+        p = self.parent()
+        while p:
+            if hasattr(p, "dashboard_page"):
+                p.dashboard_page.refresh()
+                break
+            p = p.parent()
+
     def _on_error(self, msg: str) -> None:
-        QMessageBox.critical(self, "Pipeline Error", msg)
+        details_marker = "\n\nTraceback (most recent call last):"
+        if details_marker in msg:
+            message, traceback_text = msg.split(details_marker, 1)
+            details = f"Traceback (most recent call last):{traceback_text}"
+        else:
+            message = msg
+            details = ""
+
+        model_not_found = "model" in message.lower() and "not found" in message.lower()
+        dialog = QMessageBox(self)
+        dialog.setIcon(QMessageBox.Icon.Warning if model_not_found else QMessageBox.Icon.Critical)
+        dialog.setWindowTitle("Ollama Model Not Found" if model_not_found else "Pipeline Error")
+        dialog.setText(
+            "The configured Ollama model is not installed."
+            if model_not_found
+            else message.splitlines()[0]
+        )
+        if model_not_found:
+            dialog.setInformativeText(
+                "Open Settings and use a model shown by `ollama list`, or install the "
+                "configured model with `ollama pull <model>`. Then try the analysis again."
+            )
+        if details:
+            dialog.setDetailedText(details)
+        dialog.setMinimumWidth(520)
+        dialog.exec()
         self.status_update.emit("Error occurred")
 
     # ------------------------------------------------------------------

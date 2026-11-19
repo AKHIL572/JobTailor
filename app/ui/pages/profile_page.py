@@ -35,9 +35,18 @@ class ProfilePage(QWidget):
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(16)
 
-        header = QLabel("Master Profile")
+        # ── Top Navigation Row ────────────────────────────────────────
+        top_nav_row = QHBoxLayout()
+        back_btn = QPushButton("←  Back to Dashboard")
+        back_btn.setObjectName("back_btn")
+        back_btn.clicked.connect(self._go_back_to_dashboard)
+        top_nav_row.addWidget(back_btn)
+        top_nav_row.addStretch()
+        layout.addLayout(top_nav_row)
+
+        header = QLabel("👤 Master Profile")
         header.setObjectName("header")
-        sub = QLabel("This is the single source of truth for all resume and email generation.")
+        sub = QLabel("Your single source of truth containing your genuine experience, projects, education, and skills. Edit or update details below.")
         sub.setObjectName("subheader")
         layout.addWidget(header)
         layout.addWidget(sub)
@@ -117,8 +126,25 @@ class ProfilePage(QWidget):
             text = Path(path).read_text(encoding="utf-8", errors="replace")
             self.editor.setPlainText(text)
 
+    def _go_back_to_dashboard(self) -> None:
+        p = self.parent()
+        while p:
+            if hasattr(p, "navigate_to"):
+                p.navigate_to("dashboard")
+                return
+            p = p.parent()
+
+    def _refresh_dashboard(self) -> None:
+        p = self.parent()
+        while p:
+            if hasattr(p, "dashboard_page"):
+                p.dashboard_page.refresh()
+                break
+            p = p.parent()
+
     def _save(self) -> None:
         save_profile(self.editor.toPlainText())
+        self._refresh_dashboard()
         QMessageBox.information(self, "Saved", "Master Profile saved successfully.")
 
     def _save_contact(self) -> None:
@@ -127,6 +153,7 @@ class ProfilePage(QWidget):
             data = json.loads(self.contact_editor.toPlainText())
             from app.core.profile_loader import save_contact
             save_contact(data)
+            self._refresh_dashboard()
             QMessageBox.information(self, "Saved", "Contact info saved.")
         except Exception as exc:
             QMessageBox.critical(self, "Error", f"Invalid JSON: {exc}")

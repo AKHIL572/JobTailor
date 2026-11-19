@@ -39,20 +39,121 @@ class ParsedProfile:
 def load_profile() -> str:
     """Return raw master profile text."""
     path = data_path("profile", "master_profile.md")
-    if not path.exists():
-        return ""
-    return path.read_text(encoding="utf-8")
+    if path.exists() and path.stat().st_size > 0:
+        return path.read_text(encoding="utf-8")
+    
+    # Fallback to workspace root master_profile.md
+    root_profile = Path(__file__).parent.parent.parent / "master_profile.md"
+    if root_profile.exists():
+        text = root_profile.read_text(encoding="utf-8")
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
+        except Exception:
+            pass
+        return text
+    return ""
 
 
 def load_contact() -> dict:
     """Return contact JSON dict."""
     path = data_path("profile", "contact.json")
-    if not path.exists():
-        return {}
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+    if path.exists():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if data and any(data.values()):
+                return data
+        except Exception:
+            pass
+
+    # Extract defaults from master_profile.md
+    raw = load_profile()
+    name = "AKHIL T V"
+    email = ""
+    phone = ""
+    linkedin = ""
+    github = ""
+    website = ""
+    for line in raw.splitlines()[:50]:
+        clean = line.strip()
+        if re.search(r"\*\*Name\*\*:\s*", clean, re.IGNORECASE):
+            name = re.split(r":\s*", clean, maxsplit=1)[1].strip()
+        elif re.search(r"\*\*Email\*\*:\s*", clean, re.IGNORECASE):
+            email = re.split(r":\s*", clean, maxsplit=1)[1].strip()
+        elif re.search(r"\*\*Phone\*\*:\s*", clean, re.IGNORECASE):
+            phone = re.split(r":\s*", clean, maxsplit=1)[1].strip()
+        elif re.search(r"\*\*LinkedIn\*\*:\s*", clean, re.IGNORECASE):
+            linkedin = re.split(r":\s*", clean, maxsplit=1)[1].strip()
+        elif re.search(r"\*\*GitHub\*\*:\s*", clean, re.IGNORECASE):
+            github = re.split(r":\s*", clean, maxsplit=1)[1].strip()
+        elif "Portfolio" in clean and ("http://" in clean or "https://" in clean):
+            urls = re.findall(r"https?://[^\s)]+", clean)
+            if urls and not website:
+                website = urls[0]
+
+    return {
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "linkedin": linkedin,
+        "github": github,
+        "website": website,
+    }
+
+
+def get_profile_summary() -> dict[str, str]:
+    """Return structured profile summary for the dashboard."""
+    contact = load_contact()
+    raw = load_profile()
+
+    name = contact.get("name") or "AKHIL T V"
+    email = contact.get("email") or ""
+    phone = contact.get("phone") or ""
+    linkedin = contact.get("linkedin") or ""
+    github = contact.get("github") or ""
+    website = contact.get("website") or ""
+
+    degree = ""
+    m_deg = re.search(r"\*\*Degree\*\*:\s*([^\n\r]+)", raw)
+    if m_deg:
+        degree = m_deg.group(1).strip()
+
+    institution = ""
+    m_inst = re.search(r"\*\*Institution\*\*:\s*([^\n\r]+)", raw)
+    if m_inst:
+        institution = m_inst.group(1).strip()
+
+    experience_role = ""
+    m_role = re.search(r"\*\*Role\*\*:\s*([^\n\r]+)", raw)
+    if m_role:
+        experience_role = m_role.group(1).strip()
+
+    company = ""
+    m_comp = re.search(r"\*\*Company\*\*:\s*([^\n\r]+)", raw)
+    if m_comp:
+        company = m_comp.group(1).strip()
+
+    headline_parts = []
+    if experience_role:
+        headline_parts.append(f"{experience_role} at {company}" if company else experience_role)
+    if degree:
+        headline_parts.append(degree)
+
+    headline = " · ".join(headline_parts) if headline_parts else "Software & Data Engineer"
+
+    return {
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "linkedin": linkedin,
+        "github": github,
+        "website": website,
+        "degree": degree,
+        "institution": institution,
+        "role": experience_role,
+        "company": company,
+        "headline": headline,
+    }
 
 
 def save_contact(data: dict) -> None:
